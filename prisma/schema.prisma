@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InquiryStatus {
+  NEW
+  READ
+  RESPONDED
+  CLOSED
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  settings  String?  // JSON stored as string in SQLite
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  projects         Project[]
+  blogPosts        BlogPost[]
+  contactInquiries ContactInquiry[]
+  analytics        Analytics[]
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?
+  content     String?
+  status      Status    @default(DRAFT)
+  featured    Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images     ProjectImage[]
+  tags       ProjectTag[]
+  categories ProjectCategory[]
+}
+
+model ProjectImage {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectTag {
+  id        String   @id @default(cuid())
+  name      String
+  
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, name])
+}
+
+model ProjectCategory {
+  id        String   @id @default(cuid())
+  name      String
+  
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, name])
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  excerpt     String?
+  content     String
+  status      Status    @default(DRAFT)
+  featured    Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags       BlogTag[]
+  categories BlogCategory[]
+}
+
+model BlogTag {
+  id        String   @id @default(cuid())
+  name      String
+  
+  blogPostId String
+  blogPost   BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  
+  @@unique([blogPostId, name])
+}
+
+model BlogCategory {
+  id        String   @id @default(cuid())
+  name      String
+  
+  blogPostId String
+  blogPost   BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  
+  @@unique([blogPostId, name])
+}
+
+model ContactInquiry {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    InquiryStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  
+  userId    String?
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  responses ContactResponse[]
+}
+
+model ContactResponse {
+  id        String   @id @default(cuid())
+  message   String
+  createdAt DateTime @default(now())
+  
+  inquiryId String
+  inquiry   ContactInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  event     String
+  page      String?
+  data      String?  // JSON stored as string in SQLite
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model ThemeSettings {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  colors    String   // JSON stored as string in SQLite
+  fonts     String?  // JSON stored as string in SQLite
+  customCss String?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  tags      String?  // JSON stored as string in SQLite
+  status    String   @default("active") // active, unsubscribed
+  source    String?  // Where they subscribed from
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Legacy model - can be removed if not needed
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
